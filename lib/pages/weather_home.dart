@@ -20,13 +20,67 @@ class WeatherHomePage extends StatefulWidget {
 class _WeatherHomePageState extends State<WeatherHomePage> {
   late WeatherProvider provider;
 
+
+
   @override
   void didChangeDependencies() {
     provider = Provider.of<WeatherProvider>(context, listen: false);
-    /*Provider.of<WeatherProvider>(context, listen: false).getCurrentData();
-    Provider.of<WeatherProvider>(context, listen: false).getForecastData();*/
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkConnectivity(context);
+    });
     getLocation();
     super.didChangeDependencies();
+  }
+
+  void _checkConnectivity(BuildContext context) {
+    final provider = Provider.of<WeatherProvider>(context, listen: false);
+    if (!provider.isConnected) {
+      _showNoInternetDialog(context, "No Internet Connection! Please check your network");
+    }
+    // if (!provider.isLocationEnabled) {
+    //   _showNoLocationDialog(context, "Location services are off, please enable GPS");
+    // }
+  }
+
+  void _showNoInternetDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        //title: const Text("No Internet Connection"),
+        content:
+            Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _checkConnectivity(context);
+            },
+            child: const Text("Retry"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showNoLocationDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        //title: const Text("No Internet Connection"),
+        content:
+        Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: const Text("Ok"),
+          ),
+        ],
+      ),
+    );
   }
 
   getLocation() async {
@@ -38,67 +92,76 @@ class _WeatherHomePageState extends State<WeatherHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: backgroundColor,
-      appBar: AppBar(
-        title: const Text('Daily Weather'),
-        backgroundColor: Colors.transparent,
-        actions: [
-          IconButton(
-            onPressed: () {
-              showSearch(
-                context: context,
-                delegate: _CitySearchDelegate(),
-              ).then((value) {
-                if(value != null && value.isNotEmpty) {
-                  provider.convertCityToCoord(value)
-                      .then((value) {
+    return Consumer<WeatherProvider>(
+      builder: (context, provider, child) {
+        if (!provider.isConnected) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showNoInternetDialog(context, "No Internet Connection! Please check your network.");
+          });
+        }
+
+        return Scaffold(
+          backgroundColor: backgroundColor,
+          appBar: AppBar(
+            title: const Text('Daily Weather'),
+            backgroundColor: Colors.transparent,
+            actions: [
+              IconButton(
+                onPressed: () {
+                  showSearch(
+                    context: context,
+                    delegate: _CitySearchDelegate(),
+                  ).then((value) {
+                    if (value != null && value.isNotEmpty) {
+                      provider.convertCityToCoord(value).then((value) {
                         print(value);
                         showMsg(context, value);
+                      });
+                    }
                   });
-                }
-              });
-            },
-            icon: const Icon(Icons.search),
-          ),
-          IconButton(
-            onPressed: () {
-              getLocation();
-            },
-            icon: const Icon(Icons.my_location),
-          ),
-          IconButton(
-            onPressed: () {
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const SettingsPage()));
-            },
-            icon: const Icon(Icons.settings),
-          ),
-        ],
-      ),
-      body: Consumer<WeatherProvider>(
-        builder: (context, provider, child) => provider.hasDataLoaded
-            ? Stack(
-              children: [
-                ParallaxBackground(),
-                Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      CurrentSection(
-                        currentWeather: provider.currentWeather!,
-                        unitSymbol: provider.tempUnitSymbol,
-                      ),
-                      ForecastSection(items: provider.forecastWeather!.list!),
-                    ],
-                  ),
-              ],
-            )
-            : const Center(
-                child: Text('Please wait'),
+                },
+                icon: const Icon(Icons.search),
               ),
-      ),
+              IconButton(
+                onPressed: () {
+                  getLocation();
+                },
+                icon: const Icon(Icons.my_location),
+              ),
+              IconButton(
+                onPressed: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const SettingsPage()));
+                },
+                icon: const Icon(Icons.settings),
+              ),
+            ],
+          ),
+          body: provider.hasDataLoaded && provider.isConnected
+              ? Stack(
+                  children: [
+                    ParallaxBackground(),
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        CurrentSection(
+                          currentWeather: provider.currentWeather!,
+                          unitSymbol: provider.tempUnitSymbol,
+                        ),
+                        ForecastSection(items: provider.forecastWeather!.list!),
+                      ],
+                    ),
+                  ],
+                )
+              : (!provider.isConnected)
+                  ? Center(child: const Text("No Internet Connection"))
+                  : const Center(
+                      child: Text('Please wait'),
+                    ),
+        );
+      },
     );
   }
 }

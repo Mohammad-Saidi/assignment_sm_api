@@ -1,6 +1,7 @@
 import 'package:assignment_sm_api/models/current_weather.dart';
 import 'package:assignment_sm_api/utils/constants.dart';
 import 'package:assignment_sm_api/utils/helper.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 class CurrentSection extends StatelessWidget {
@@ -19,7 +20,8 @@ class CurrentSection extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            getFormattedDateTime(currentWeather.dt!, pattern: 'EEE MMM dd, yyyy'),
+            getFormattedDateTime(currentWeather.dt!,
+                pattern: 'EEE MMM dd, yyyy'),
             style: const TextStyle(
               fontSize: 20,
               color: Colors.white54,
@@ -43,7 +45,11 @@ class CurrentSection extends StatelessWidget {
               fontSize: 20,
             ),
           ),
-          Image.network('$prefixWeatherIconUrl${currentWeather.weather![0].icon}$suffixWeatherIconUrl',),
+          CachedNetworkImage(
+            imageUrl:
+                '$prefixWeatherIconUrl${currentWeather.weather![0].icon}$suffixWeatherIconUrl',
+            errorWidget: (context, url, error) => Icon(Icons.error),
+          ),
           Text(
             currentWeather.weather![0].description!,
             style: const TextStyle(

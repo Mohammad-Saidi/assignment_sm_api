@@ -1,16 +1,73 @@
+import 'dart:async';
 import 'dart:convert';
-
 import 'package:assignment_sm_api/models/current_weather.dart';
 import 'package:assignment_sm_api/models/forecast_weather.dart';
 import 'package:assignment_sm_api/utils/constants.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geocoding/geocoding.dart';
-
+import 'package:geolocator/geolocator.dart';
+import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 
+
 class WeatherProvider extends ChangeNotifier {
-  /*static const lat = 23.8238582;
-  static const lng = 90.3661377;*/
+
+  bool _isConnected = true;
+  bool _isLocationEnabled = true;
+  final Connectivity _connectivity = Connectivity();
+  late StreamSubscription<List<ConnectivityResult>> _subscription;
+
+  bool get isConnected => _isConnected;
+  bool get isLocationEnabled => _isLocationEnabled;
+
+  WeatherProvider() {
+    _checkInternetConnection();
+    //_checkLocationStatus();
+    _subscription = _connectivity.onConnectivityChanged.listen((results) {
+      _isConnected = results.any((result) => result != ConnectivityResult.none);
+      notifyListeners();
+    });
+
+  }
+
+  Future<void> _checkInternetConnection() async {
+    var result = await _connectivity.checkConnectivity();
+    _isConnected = result.any((result) => result != ConnectivityResult.none);
+    notifyListeners();
+  }
+
+  // Future<void> _checkLocationStatus() async {
+  //   bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+  //   LocationPermission permission = await Geolocator.checkPermission();
+  //
+  //   if (!serviceEnabled || permission == LocationPermission.deniedForever) {
+  //     _isLocationEnabled = false;
+  //   } else {
+  //     _isLocationEnabled = true;
+  //     if (permission == LocationPermission.denied) {
+  //       permission = await Geolocator.requestPermission();
+  //       _isLocationEnabled = permission == LocationPermission.always || permission == LocationPermission.whileInUse;
+  //     }
+  //   }
+  //   notifyListeners();
+  //
+  // }
+
+
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    _subscription.cancel();
+    super.dispose();
+  }
+
+
+
+
+
+  final _weatherBox = Hive.box('weather');
   double _latitude = 0.0;
   double _longitude = 0.0;
   String unit = metric;
@@ -58,6 +115,7 @@ class WeatherProvider extends ChangeNotifier {
       final response = await http.get(uri);
       if(response.statusCode == 200) {
         final map = json.decode(response.body);
+        await _weatherBox.put('currentData', map);
         currentWeather = CurrentWeather.fromJson(map);
         print(currentWeather?.main?.temp);
         notifyListeners();
@@ -66,6 +124,13 @@ class WeatherProvider extends ChangeNotifier {
         print(map['message']);
       }
     } catch(error) {
+
+      final map = _weatherBox.get('currentData');
+      currentWeather = CurrentWeather.fromJson(map);
+      notifyListeners();
+      if (currentWeather == null) throw Exception('No internet connection and no cached data available');
+
+
       print(error.toString());
     }
   }
@@ -76,6 +141,7 @@ class WeatherProvider extends ChangeNotifier {
       final response = await http.get(uri);
       if(response.statusCode == 200) {
         final map = json.decode(response.body);
+        await _weatherBox.put('forecastData', map);
         forecastWeather = ForecastWeather.fromJson(map);
         print(forecastWeather?.list?.length);
         notifyListeners();
@@ -84,6 +150,16 @@ class WeatherProvider extends ChangeNotifier {
         print(map['message']);
       }
     } catch(error) {
+
+      final map = _weatherBox.get('forecastData');
+      forecastWeather = ForecastWeather.fromJson(map);
+      notifyListeners();
+
+      if (forecastWeather == null) {
+        throw Exception('No internet connection and no cached data available');
+      }
+
+
       print(error.toString());
     }
   }

@@ -1,5 +1,6 @@
 import 'package:assignment_sm_api/utils/constants.dart';
 import 'package:assignment_sm_api/utils/helper.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../models/forecast_weather.dart';
@@ -42,10 +43,13 @@ class ForecastSection extends StatelessWidget {
                         ),
                       ),
                       Expanded(
-                        child: Image.network(
-                          '$prefixWeatherIconUrl${item.weather![0].icon}$suffixWeatherIconUrl',
+                        child: CachedNetworkImage(
+                          imageUrl:
+                              '$prefixWeatherIconUrl${item.weather![0].icon}$suffixWeatherIconUrl',
                           width: 50,
                           height: 50,
+                          errorWidget: (context, url, error) =>
+                              Icon(Icons.error),
                         ),
                       ),
                       Text(

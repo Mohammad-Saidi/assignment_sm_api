@@ -1,15 +1,21 @@
 import 'package:assignment_sm_api/pages/weather_home.dart';
 import 'package:assignment_sm_api/provider/weather_provider.dart';
+import 'package:assignment_sm_api/utils/location_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hive_flutter/adapters.dart';
 import 'package:provider/provider.dart';
+import 'package:hive/hive.dart';
 
-
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
+  await Hive.openBox('weather');
   runApp(ChangeNotifierProvider(
-      create: (context) => WeatherProvider(),
-      child: const MyApp()));
+      create: (context) => WeatherProvider(), child: const MyApp()));
 }
+
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
